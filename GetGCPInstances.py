@@ -6,23 +6,15 @@ from google.oauth2 import service_account
 import logging.handlers
 import json
 import GcpUtil
+import Config
 
-#Set Credentials
-SCOPES = ['https://www.googleapis.com/auth/compute','https://www.googleapis.com/auth/monitoring.read']
-SERVICE_ACCOUNT_FILE = '/Users/sandeep/Downloads/dazzling-skill-210617-e093ff6cfb3d.json'
-#SERVICE_ACCOUNT_FILE = '/Users/sandeep/Downloads/dazzling-skill-210617-e5f21a7a4842.json'
-#SERVICE_ACCOUNT_FILE = '/Users/sandeep/Downloads/My Project-68927e50a46b.json'
 #Read Configs
-config = configparser.ConfigParser()
-config.read(os.path.join(os.path.abspath(os.path.dirname(__file__)),'conf','project.config'))
-log_level = config.get('Logs', 'log_level')
-projects = json.loads(config.get('gcp', 'projects'))
-if log_level == 'INFO':
-        log_level = logging.INFO
-elif log_level == 'DEBUG':
-        log_level = logging.DEBUG
+#Read Configs and set logging
+log_level = Config.getLogLevel()
+projects = Config.getProjects()
+log_path = Config.getLogPath()
+
 #logging handler
-log_path = config.get('Logs', 'log_path')
 log = logging.getLogger('gcp_instance')
 if not log.handlers:
     handler = logging.handlers.TimedRotatingFileHandler(filename=os.environ.get("LOGFILE", log_path), when='midnight', interval=1, backupCount=7)
@@ -35,37 +27,34 @@ log.setLevel(log_level)
 gcputil = GcpUtil.GcpUtil()
 
 try:
-        credentials = service_account.Credentials.from_service_account_file(
-                SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-        all_instances=[]
+        instanceList=[]
         for project in projects:
-                # Get disk info for all the projects
-                service = googleapiclient.discovery.build('compute', 'v1', credentials=credentials)
-                request = service.instances().aggregatedList(project=project)
-                while request is not None:
-                    response = request.execute()
-                    # pprint(response)
-                    for name, instances_scoped_list in response['items'].items():
-                        # pprint((name, disks_scoped_list))
-                        if 'warning' in instances_scoped_list:
-                                log.debug(instances_scoped_list['warning']['message'])
-                        else:
-                                for instance in instances_scoped_list['instances']:
-                                    all_instances.append(instance)
-                                        # log.info('kind=%s name=%s sizeGB=%s status=%s type=%s users=%s zone=%s' % (disk['kind'], disk['name'], disk['sizeGb'], disk['status'], disk['type'][disk['type'].rindex('/')+1:], disk['users'], disk['zone'][disk['zone'].rindex('/')+1:]))
-                    request = service.instances().aggregatedList_next(previous_request=request, previous_response=response)
-                #Get Monitoring data for the instances
-                gcputil.getInstanceMetrics(project,300)
+            # Get disk info for all the projects
+            gcputil.getInstanceAggregatedList(project,instanceList)
+            #Get Monitoring data for the instances
+            metrics=gcputil.getInstanceMetrics(project,300)
 
-        for instance in all_instances:
-            # log.info(instance)
-            disks=[]
-            networkInterfaces=[]
-            for disk in instance['disks']:
-                disks.append(disk['source'][disk['source'].rindex('/')+1:])
-            for networkInterface in instance['networkInterfaces']:
-                networkInterfaces.append(networkInterface['networkIP'])
-            log.info('kind=%s name=%s machineType=%s status=%s networkIPs=%s disks=%s zone=%s' % (instance['kind'], instance['name'], instance['machineType'][instance['machineType'].rindex('/')+1:], instance['status'], networkInterfaces, disks, instance['zone'][instance['zone'].rindex('/')+1:]))
+            # Correlate InstanceList and Metrics
+            for instance in instanceList:
+                disks = []
+                networkInterfaces = []
+                if 'disks' in instance:
+                    for disk in instance['disks']:
+                        disks.append(disk['source'][disk['source'].rindex('/') + 1:])
+                if 'networkInterfaces' in instance:
+                    for networkInterface in instance['networkInterfaces']:
+                        networkInterfaces.append(networkInterface['networkIP'])
+                for metric in metrics:
+                    if instance['name'] == metric['labels']['instance_name']:
+                        instance.update(metric['measures'])
+                    continue
+                # log.info('kind=%s name=%s sizeGB=%s status=%s type=%s users=%s zone=%s read_bytes_count=%s read_ops_count=%s write_bytes_count=%s write_ops_count=%s' % (
+                #     disk['kind'], disk['name'], disk['sizeGb'], disk['status'],
+                #     disk['type'][disk['type'].rindex('/') + 1:], users, disk['zone'][disk['zone'].rindex('/') + 1:],
+                #     disk['read_bytes_count'], disk['read_ops_count'], disk['write_bytes_count'],
+                #     disk['write_ops_count']))
+            # print(instanceList)
+            log.info('kind=%s name=%s machineType=%s status=%s networkIPs=%s disks=%s zone=%s uptime=%s cpu_utilization=%s reserved_cores=%s' % (instance['kind'], instance['name'], instance['machineType'][instance['machineType'].rindex('/')+1:], instance['status'], networkInterfaces, disks, instance['zone'][instance['zone'].rindex('/')+1:]), instance['uptime'], instance['utilization'], instance['reserved_cores'])
 
 except Exception:
         import traceback
