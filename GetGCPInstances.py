@@ -17,7 +17,8 @@ log_path = Config.getLogPath()
 #logging handler
 log = logging.getLogger('gcp_instance')
 if not log.handlers:
-    handler = logging.handlers.TimedRotatingFileHandler(filename=os.environ.get("LOGFILE", log_path), when='midnight', interval=1, backupCount=7)
+    # handler = logging.handlers.TimedRotatingFileHandler(filename=os.environ.get("LOGFILE", log_path), when='midnight', interval=1, backupCount=7)
+    handler = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter("[%(asctime)s] %(levelname)s %(name)s %(message)s")
     handler.setFormatter(formatter)
     log.addHandler(handler)
@@ -48,13 +49,7 @@ try:
                     if instance['name'] == metric['labels']['instance_name']:
                         instance.update(metric['measures'])
                     continue
-                # log.info('kind=%s name=%s sizeGB=%s status=%s type=%s users=%s zone=%s read_bytes_count=%s read_ops_count=%s write_bytes_count=%s write_ops_count=%s' % (
-                #     disk['kind'], disk['name'], disk['sizeGb'], disk['status'],
-                #     disk['type'][disk['type'].rindex('/') + 1:], users, disk['zone'][disk['zone'].rindex('/') + 1:],
-                #     disk['read_bytes_count'], disk['read_ops_count'], disk['write_bytes_count'],
-                #     disk['write_ops_count']))
-            # print(instanceList)
-            log.info('kind=%s name=%s machineType=%s status=%s networkIPs=%s disks=%s zone=%s uptime=%s cpu_utilization=%s reserved_cores=%s' % (instance['kind'], instance['name'], instance['machineType'][instance['machineType'].rindex('/')+1:], instance['status'], networkInterfaces, disks, instance['zone'][instance['zone'].rindex('/')+1:]), instance['uptime'], instance['utilization'], instance['reserved_cores'])
+                log.info('kind=%s name=%s machineType=%s status=%s networkIPs=%s disks=%s zone=%s uptime=%s cpu_utilization=%s reserved_cores=%s' % (instance['kind'], instance['name'], instance['machineType'][instance['machineType'].rindex('/')+1:], instance['status'], networkInterfaces, disks, instance['zone'][instance['zone'].rindex('/')+1:], instance['uptime'], instance['utilization'], instance['reserved_cores']))
 
 except Exception:
         import traceback
