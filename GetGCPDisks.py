@@ -3,6 +3,7 @@ sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)),'libs'))
 import Config
 import GcpUtil
 import logging.handlers
+import json
 
 #Read Configs and set logging
 log_level = Config.getLogLevel()
@@ -32,15 +33,23 @@ try:
         #Correlate DiskList and Metrics
         for disk in diskList:
             users=[]
-            if 'users' in disk['users']:
+            if 'users' in disk:
                 for user in disk['users']:
-                        users.append(user[user.rindex('/') + 1:])
+                    users.append(user[user.rindex('/') + 1:])
+            # Add zero for metrics in case they are unavailable
+            disk.update({
+                "write_ops_count": 0.0,
+                "read_ops_count":0.0,
+                "write_bytes_count":0.0,
+                "read_bytes_count":0.0,
+            })
             for metric in metrics:
                 if disk['name'] == metric['labels']['device_name']:
                     disk.update(metric['measures'])
-                continue
-            log.info('kind=%s name=%s sizeGB=%s status=%s type=%s users=%s zone=%s read_bytes_count=%s read_ops_count=%s write_bytes_count=%s write_ops_count=%s' % (disk['kind'], disk['name'], disk['sizeGb'], disk['status'], disk['type'][disk['type'].rindex('/')+1:], users, disk['zone'][disk['zone'].rindex('/')+1:],disk['read_bytes_count'],disk['read_ops_count'],disk['write_bytes_count'], disk['write_ops_count']))
-        # print(diskList)
+                # print json.dumps(metric)
+                continue 
+            log.info('kind=%s name=%s sizeGB=%s status=%s type=%s users=%s zone=%s read_bytes_count=%s read_ops_count=%s write_bytes_count=%s write_ops_count=%s' % (disk['kind'], disk['name'], disk['sizeGb'], disk['status'], disk['type'][disk['type'].rindex('/')+1:], json.dumps(users), disk['zone'][disk['zone'].rindex('/')+1:],disk['read_bytes_count'],disk['read_ops_count'],disk['write_bytes_count'], disk['write_ops_count']))
+        # print json.dumps(diskList)
 
 except Exception:
         import traceback

@@ -103,36 +103,8 @@ class GcpUtil:
             interval,
             monitoring_v3.enums.ListTimeSeriesRequest.TimeSeriesView.FULL,
             aggregation)
-        # if other metrics exists, then just add fields to the existing metrics
-        if metrics:
-            # for result in results:
-            for result in results:
-                latestPoint = None
-                for point in result.points:
-                    value_type = point.value.WhichOneof('value')
-                    # data.append(point.__getattribute__(value_type))
-                    latestPoint = point.value.__getattribute__(value_type)
-                # labels = _dataframe._extract_labels(result)
-                temp_metric = {'labels': {}, 'measures': {}}
-                temp_metric['labels']['resource_type'] = result.resource.type
-                temp_metric['labels'].update(result.resource.labels)
-                temp_metric['labels'].update(result.metric.labels)
-                for metric in metrics:
-                    if 'device_name' in metric.keys():
-                        if metric['labels']['resource_type'] == temp_metric['labels']['resource_type'] and metric['labels']['instance_id'] == temp_metric['labels']['instance_id'] and metric['labels']['device_name'] == temp_metric['labels']['device_name']:
-                            metric['measures'][metric_type[metric_type.rindex('/') + 1:]] = latestPoint
-                        else:
-                            temp_metric['measures'][metric_type[metric_type.rindex('/') + 1:]] = latestPoint
-                            metrics.append(temp_metric)
-                    else:
-                        if metric['labels']['resource_type'] == temp_metric['labels']['resource_type'] and metric['labels']['instance_id'] == temp_metric['labels']['instance_id']:
-                            metric['measures'][metric_type[metric_type.rindex('/') + 1:]] = latestPoint
-                        else:
-                            temp_metric['measures'][metric_type[metric_type.rindex('/') + 1:]] = latestPoint
-                            metrics.append(temp_metric)
-                    continue
-        else:
-            for result in results:
+
+        for result in results:
                 latestPoint=None
                 for point in result.points:
                     value_type = point.value.WhichOneof('value')
@@ -144,8 +116,21 @@ class GcpUtil:
                 temp_metric['labels'].update(result.resource.labels)
                 temp_metric['labels'].update(result.metric.labels)
                 temp_metric['measures'][metric_type[metric_type.rindex('/') + 1:]] = latestPoint
-                metrics.append(temp_metric)
-                # print(temp_metric)
+                if metrics:
+                    foundExistingMetric = False
+                    for metric in metrics:
+                        if 'device_name' in metric['labels'].keys():
+                            if metric['labels']['device_name'] == temp_metric['labels']['device_name']:
+                                metric['measures'][metric_type[metric_type.rindex('/') + 1:]] = latestPoint
+                                foundExistingMetric = True
+                                break
+                        elif 'instance_id' in metric['labels'].keys():
+                            if metric['labels']['instance_id'] == temp_metric['labels']['instance_id']:
+                                metric['measures'][metric_type[metric_type.rindex('/') + 1:]] = latestPoint
+                    if not foundExistingMetric:
+                        metrics.append(temp_metric)
+                else:
+                    metrics.append(temp_metric)
 
 
     def getComputeService(self):
