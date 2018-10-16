@@ -3,6 +3,7 @@ import os,sys
 #import Config
 import GcpUtil
 import logging.handlers
+import json
 
 #Read Configs and set logging
 log_level = logging.INFO
@@ -30,6 +31,8 @@ try:
 
 
         #Correlate DiskList and Metrics
+        # print(json.dumps(metrics))
+        # print(json.dumps(diskList))
         for disk in diskList:
             users=[]
             if 'users' in disk['users']:
@@ -40,7 +43,7 @@ try:
                     disk.update(metric['measures'])
                 continue
             log.info('kind=%s name=%s sizeGB=%s status=%s type=%s users=%s zone=%s read_bytes_count=%s read_ops_count=%s write_bytes_count=%s write_ops_count=%s' % (disk['kind'], disk['name'], disk['sizeGb'], disk['status'], disk['type'][disk['type'].rindex('/')+1:], users, disk['zone'][disk['zone'].rindex('/')+1:],disk['read_bytes_count'],disk['read_ops_count'],disk['write_bytes_count'], disk['write_ops_count']))
-        # print(diskList)
+        
 
 except Exception:
         import traceback

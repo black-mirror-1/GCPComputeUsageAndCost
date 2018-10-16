@@ -36,6 +36,7 @@ try:
             metrics=gcputil.getInstanceMetrics(project,300)
 
             # Correlate InstanceList and Metrics
+            # print json.dumps(instanceList)
             for instance in instanceList:
                 disks = []
                 networkInterfaces = []
@@ -49,7 +50,7 @@ try:
                     if instance['name'] == metric['labels']['instance_name']:
                         instance.update(metric['measures'])
                     continue
-                log.info('kind=%s name=%s machineType=%s status=%s networkIPs=%s disks=%s zone=%s uptime=%s cpu_utilization=%s reserved_cores=%s' % (instance['kind'], instance['name'], instance['machineType'][instance['machineType'].rindex('/')+1:], instance['status'], networkInterfaces, disks, instance['zone'][instance['zone'].rindex('/')+1:], instance['uptime'], instance['utilization'], instance['reserved_cores']))
+                log.info('kind=%s name=%s machineType=%s status=%s networkIPs=%s disks=%s zone=%s uptime=%s cpu_utilization=%s reserved_cores=%s' % (instance['kind'], instance['name'], instance['machineType'][instance['machineType'].rindex('/')+1:], instance['status'], json.dumps(networkInterfaces), json.dumps(disks), instance['zone'][instance['zone'].rindex('/')+1:], instance['uptime'], instance['utilization'], instance['reserved_cores']))
 
 except Exception:
         import traceback
